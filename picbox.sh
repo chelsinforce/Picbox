@@ -38,10 +38,10 @@ generate_self_signed_cert() {
   local CERT_DIR=$2
   mkdir -p "$CERT_DIR"
   openssl req -x509 -nodes -days 365 \
-    -newkey rsa:2048 \
-    -keyout "$CERT_DIR/$DOMAIN.key" \
-    -out "$CERT_DIR/$DOMAIN.crt" \
-    -subj "/CN=$DOMAIN"
+	-newkey rsa:2048 \
+  	-keyout "$CERT_DIR/$DOMAIN".key \
+  	-out "$CERT_DIR/$DOMAIN".crt \
+  	-config cert.conf
   green "✅ Certificat autosigné créé dans $CERT_DIR"
 }
 
@@ -542,4 +542,5 @@ if [[ "$INIT_SCAN" == "1" ]]; then
   docker compose run --rm cve-scanner
   docker compose run --rm parser
 fi
+
 exit 0
