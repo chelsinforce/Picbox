@@ -2,15 +2,15 @@
 set -e
 
 # === Fonctions couleurs ===
-green() { echo -e "\e[32m$1\e[0m"; }
-red() { echo -e "\e[31m$1\e[0m"; }
+green()  { echo -e "\e[32m$1\e[0m"; }
+red()    { echo -e "\e[31m$1\e[0m"; }
 yellow() { echo -e "\e[33m$1\e[0m"; }
-blue() { echo -e "\e[34m$1\e[0m"; }
+blue()   { echo -e "\e[34m$1\e[0m"; }
 
 # === Vérifications Docker ===
 is_docker_installed() { command -v docker &> /dev/null; }
 is_buildx_available() { docker buildx version &> /dev/null; }
-is_compose_available() { docker compose version &> /dev/null; }
+is_compose_available() { docker compose version &> /dev/null || command -v docker-compose &> /dev/null; }
 
 install_docker() {
   blue "🛠️ Installation de Docker et composants..."
@@ -18,93 +18,116 @@ install_docker() {
   apt-get update
   apt-get install -y ca-certificates curl gnupg lsb-release openssl
   install -m 0755 -d /etc/apt/keyrings
-  curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor \
+    -o /etc/apt/keyrings/docker.gpg
   chmod a+r /etc/apt/keyrings/docker.gpg
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+    https://download.docker.com/linux/debian $(lsb_release -cs) stable" \
+    > /etc/apt/sources.list.d/docker.list
   apt-get update
   apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  if ! command -v docker-compose &> /dev/null; then
+    alias docker-compose='docker compose'
+  fi
 }
+
+# === Vérification / Installation de cron ===
+if ! command -v cron >/dev/null 2>&1; then
+  blue "📦 Installation de cron..."
+  apt-get update
+  apt-get install -y cron
+else
+  green "✅ Cron est déjà installé."
+fi
+
+# === Activation du service cron ===
+if ! pgrep -x "cron" > /dev/null; then
+  blue "🔁 Démarrage du service cron..."
+  service cron start
+  systemctl enable cron 2>/dev/null || true
+else
+  green "✅ Le service cron est déjà en cours d'exécution."
+fi
 
 # === Génération certificat autosigné ===
 generate_self_signed_cert() {
   local DOMAIN=$1
   local CERT_DIR=$2
   mkdir -p "$CERT_DIR"
-  openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  openssl req -x509 -nodes -days 365 \
+    -newkey rsa:2048 \
     -keyout "$CERT_DIR/$DOMAIN.key" \
     -out "$CERT_DIR/$DOMAIN.crt" \
     -subj "/CN=$DOMAIN"
   green "✅ Certificat autosigné créé dans $CERT_DIR"
 }
 
-# === Menu principal ===
+# === Interactions utilisateur ===
 
 read -p "📁 Nom du projet (dossier) : " PROJECT_DIR
 read -p "🌐 Domaine public (ex: teleport.example.com) : " DOMAIN
 
-echo -e "\n🔐 Choix certificat SSL :"
-echo "1) Let's Encrypt (via certbot)"
-echo "2) Certificat autosigné"
+echo -e "\n🔐 Choix du certificat SSL :"
+echo "1) Let's Encrypt"
+echo "2) Certificat autosigné (self-signed)"
 read -p "Choix (1 ou 2) : " CERT_TYPE
 
 if [[ "$CERT_TYPE" == "1" ]]; then
   read -p "Email pour certbot : " CERTBOT_EMAIL
 fi
 
-echo -e "\n📦 Choix pour Zabbix:"
+echo -e "\n📦 Installer Zabbix ?"
 echo "1) Oui"
 echo "2) Non"
-read -p "Installer ZABBIX (1 ou 2)? :" SERVICES
+read -p "Choix (1 ou 2) : " SERVICES
 
 if [[ "$SERVICES" == "1" ]]; then
-   read -p "Mot de passe Zabbix (pour proxy) : " ZABBIX_PASS
-fi 
+  read -p "Mot de passe Zabbix (proxy) : " ZABBIX_PASS
+fi
 
-echo -e "\n📡 Initialiser un scan à l'installation ?"
+echo -e "\n📡 Lancer un scan initial maintenant ?"
 echo "1) Oui"
 echo "2) Non"
-read -p "Lancer un scan initial maintenant ? (1 ou 2) : " INIT_SCAN
+read -p "Choix initial scan (1 ou 2) : " INIT_SCAN
 
 echo -e "\n⏱️ Planifier des scans automatiques ?"
 echo "1) Oui"
 echo "2) Non"
-read -p "Lancer un scan initial maintenant ? (1 ou 2) : " SCAN_AUT
+read -p "Choix scans automatiques (1 ou 2) : " SCAN_AUT
 
 if [[ "$SCAN_AUT" == "1" ]]; then
-  echo -e "\n⏱️ Planifier des scans automatiques ?"
-  read -p "Nombre de jours entre chaque scan (laisser vide pour ne pas planifier) : " SCAN_INTERVAL_DAYS
+  read -p "Intervalle en jours entre chaque scan (laisser vide pour désactiver) : " SCAN_INTERVAL_DAYS
   if [[ -n "$SCAN_INTERVAL_DAYS" ]]; then
-  read -p "🕒 À quelle heure lancer le scan ? (ex: 03:00) : " SCAN_TIME
+    read -p "Heure de lancement du scan (HH:MM, par ex. 03:00) : " SCAN_TIME
   fi
-  read -p "\n🎯 Adresse IP, plage ou domaine à scanner (ex: 192.168.1.0/24) : " SCAN_TARGET
+  read -p "Cible à scanner (IP, plage ou domaine) : " SCAN_TARGET
 fi
 
-echo -e "\n🗃️ Voulez-vous conserver l'historique des anciens scans ?"
-echo "1) Oui (garder les données précédentes)"
-echo "2) Non (supprimer les anciennes données avant chaque scan)"
+echo -e "\n🗃️ Conserver l'historique des anciens scans ?"
+echo "1) Oui"
+echo "2) Non – supprimer les anciens"
 read -p "Choix (1 ou 2) : " KEEP_HISTORY
 
-read -p "🔐 Mot de passe PostgreSQL (laisser vide pour 'dojo123') : " DB_PASS
+read -p "🔐 Mot de passe PostgreSQL (laisser vide = 'dojo123') : " DB_PASS
 DB_PASS=${DB_PASS:-dojo123}
 
-if [[ "$KEEP_HISTORY" == "2" ]]; then
-  export CLEAR_DB=true
-else
-  export CLEAR_DB=false
-fi
+export CLEAR_DB=$([[ "$KEEP_HISTORY" == "2" ]] && echo "true" || echo "false")
 
+# Vérification / installation Docker
 if ! is_docker_installed || ! is_buildx_available || ! is_compose_available; then
   install_docker
 else
-  green "✅ Docker et composants déjà installés."
+  green "✅ Docker, buildx et compose sont déjà installés."
 fi
 
-read -p "🧹 Supprimer ancienne installation $PROJECT_DIR ? (y/N) : " CLEANUP
+read -p "🧹 Supprimer ancienne installation '$PROJECT_DIR' ? (y/N) : " CLEANUP
+CLEANUP=${CLEANUP:-n}
 if [[ "$CLEANUP" =~ ^[Yy]$ ]]; then
   docker compose -f "$PROJECT_DIR/docker-compose.yaml" down --volumes --remove-orphans || true
   rm -rf "$PROJECT_DIR"
 fi
 
+# Création des dossiers
 mkdir -p "$PROJECT_DIR"/{config,data,nginx/certs,nginx/conf.d,cve-scanner/scripts,cve-scanner/scans}
 
 cat > "$PROJECT_DIR/cve-scanner/scripts/parse_and_insert.py" <<EOF
@@ -218,14 +241,15 @@ EOF
 chmod +x "$PROJECT_DIR/cve-scanner/scripts/scan.sh"
 
 if [[ "$CERT_TYPE" == "1" ]]; then
-  blue "📥 Obtention certificat Let's Encrypt..."
-  docker run --rm -it \
-    -v "$PROJECT_DIR/nginx/certs:/etc/letsencrypt" \
-    -v "$PROJECT_DIR/nginx/conf.d:/var/www/certbot" \
-    certbot/certbot certonly \
-    --webroot -w /var/www/certbot \
-    --email "$CERTBOT_EMAIL" --agree-tos --no-eff-email -d "$DOMAIN"
-
+  blue "📥 Obtention du certificat Let's Encrypt..."
+  if ! docker run --rm -v "$PROJECT_DIR/nginx/certs:/etc/letsencrypt" \
+       -v "$PROJECT_DIR/nginx/conf.d:/var/www/certbot" \
+       certbot/certbot certonly \
+       --webroot -w /var/www/certbot \
+       --email "$CERTBOT_EMAIL" --agree-tos --no-eff-email -d "$DOMAIN"; then
+    red "❌ Échec de Certbot, vérifie la config du domaine et que port 80 est ouvert."
+    exit 1
+  fi
   cp "$PROJECT_DIR/nginx/certs/live/$DOMAIN/fullchain.pem" "$PROJECT_DIR/nginx/certs/$DOMAIN.crt"
   cp "$PROJECT_DIR/nginx/certs/live/$DOMAIN/privkey.pem" "$PROJECT_DIR/nginx/certs/$DOMAIN.key"
 else
@@ -241,6 +265,7 @@ services:
     container_name: nginx
     ports:
       - "443:443"
+      - "3080:3080"
     volumes:
       - ./nginx/certs:/etc/nginx/certs:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
@@ -357,7 +382,7 @@ if [[ "$SERVICES" == "1" ]]; then
     container_name: zabbix_proxy
     environment:
       - ZBX_HOSTNAME=zabbix-proxy
-      - ZBX_SERVER_HOST=127.0.0.1
+      - ZBX_SERVER_HOST=51.83.41.200
       - ZBX_PROXYMODE=0
       - ZBX_LOGLEVEL=3
       - ZBX_PASS=${ZABBIX_PASS}
@@ -381,7 +406,6 @@ volumes:
   portainer_data:
   urbackup_data:
   urbackup_db:
-  wazuh_data:
   zabbix_proxy_data:
 
 EOF
@@ -399,6 +423,15 @@ server {
     proxy_set_header Host \$host;
     proxy_set_header X-Forwarded-Proto \$scheme;
     proxy_set_header X-Forwarded-For \$remote_addr;
+  }
+}
+
+server {
+  listen 3080;
+  server_name $DOMAIN;
+
+  location / {
+    return 301 https://$host$request_uri;
   }
 }
 EOF
@@ -458,16 +491,18 @@ green "✅ Déploiement préparé dans $PROJECT_DIR"
 yellow "⚠️ Pour créer un compte admin, exécutez : docker exec -it teleport tctl users add admin --roles=editor,access"
 [[ "$CERT_TYPE" == "2" ]] && yellow "⚠️ Certificat autosigné : un avertissement apparaîtra dans le navigateur."
 
-#cron
 if [[ -n "$SCAN_INTERVAL_DAYS" ]]; then
-  /bin/sh -c "echo '${SCAN_TIME##*:} ${SCAN_TIME%%:*} */$SCAN_INTERVAL_DAYS * * docker compose run --rm cve-scanner && docker compose run --rm parser' | crontab - && crond -f"
+  cron_line="${SCAN_TIME##*:} ${SCAN_TIME%%:*} */$SCAN_INTERVAL_DAYS * * cd $(pwd) && docker compose run --rm cve-scanner && docker compose run --rm parser"
+  (crontab -l 2>/dev/null; echo "$cron_line") | crontab -
+  service cron start || { red "❌ Impossible de lancer cron daemon."; }
+  green "✅ Planification cron enregistrée."
 fi
 
-#Lancement scan
+# Scan initial
 if [[ "$INIT_SCAN" == "1" ]]; then
   green "🚀 Lancement du scan initial..."
-  docker compose -f "docker-compose.yaml" build parser
-  docker compose -f "docker-compose.yaml" run --rm cve-scanner
-  docker compose -f "docker-compose.yaml" run --rm parser
+  docker compose build parser
+  docker compose run --rm cve-scanner
+  docker compose run --rm parser
 fi
 exit 0
