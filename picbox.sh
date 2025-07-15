@@ -400,6 +400,8 @@ if [[ "$SERVICES" == "1" ]]; then
       - ZBX_PROXYMODE=0
       - ZBX_LOGLEVEL=3
       - ZBX_PASS=${ZABBIX_PASS}
+    ports:
+      - "10051:10051"
     volumes:
       - zabbix_proxy_data:/var/lib/sqlite
     networks:
