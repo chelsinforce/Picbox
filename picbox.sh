@@ -534,8 +534,6 @@ if [[ -n "$SCAN_INTERVAL_DAYS" ]]; then
   fi
 fi
 
-
-
 # === Lancement d'un scan initial manuel si sélectionné ===
 
 if [[ "$INIT_SCAN" == "1" ]]; then
