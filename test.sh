@@ -494,9 +494,25 @@ yellow "⚠️ Pour créer un compte admin, exécutez : docker exec -it teleport
 if [[ -n "$SCAN_INTERVAL_DAYS" ]]; then
   cron_line="${SCAN_TIME##*:} ${SCAN_TIME%%:*} */$SCAN_INTERVAL_DAYS * * cd $(pwd) && docker compose run --rm cve-scanner && docker compose run --rm parser"
   (crontab -l 2>/dev/null; echo "$cron_line") | crontab -
-  service cron start || { red "❌ Impossible de lancer cron daemon."; }
-  green "✅ Planification cron enregistrée."
+
+  blue "🔁 Tentative de démarrage du service cron..."
+
+  cron_started=false
+  if command -v service &>/dev/null && service cron start 2>/dev/null; then
+    cron_started=true
+  elif command -v cron &>/dev/null && cron 2>/dev/null & disown; then
+    cron_started=true
+  fi
+
+  sleep 1
+  if $cron_started && pgrep -x cron >/dev/null; then
+    green "✅ Planification cron enregistrée et daemon démarré."
+  else
+    red "❌ Impossible de démarrer le daemon cron. Il est peut-être absent ou non compatible avec cet environnement."
+  fi
 fi
+
+
 
 # Scan initial
 if [[ "$INIT_SCAN" == "1" ]]; then
