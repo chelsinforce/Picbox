@@ -1,168 +1,186 @@
-# 📘 **Documentation d'utilisation – Script de déploiement Docker + Scanner CVE**
+# CVE Scanner Infrastructure
 
-## 🎯 Objectif
+## Overview
 
-Ce script Bash automatise le déploiement d'une stack Docker composée des services suivants :
+This project provides a fully containerized infrastructure for securely scanning, parsing, and monitoring vulnerabilities (CVEs) across a network. Designed for operational simplicity and high security, it uses Docker, Nmap, PostgreSQL, and Grafana, with access management and service routing handled exclusively through Teleport behind a reverse proxy.
 
-* **Teleport** pour la gestion d'accès sécurisé
-* **Portainer** pour l'administration Docker
-* **UrBackup** pour la sauvegarde
-* **PostgreSQL** pour stocker les vulnérabilités détectées
-* **Grafana** pour la visualisation des CVE
-* **Nginx** comme reverse proxy avec SSL
-* **Scanner CVE** basé sur Nmap + Vulners
-* **Zabbix Proxy** *(optionnel)* pour la supervision
+> **Access to all internal services is strictly routed through Teleport.**  
+> The only public entrypoint is an HTTPS endpoint served by NGINX.
 
----
 
-## 🧰 Prérequis
 
-* Système Debian ou Ubuntu avec accès root
-* Un nom de domaine pointant vers la machine (si Let's Encrypt est utilisé)
-* Connexion Internet
+## Features
 
----
+- **Single-command deployment** via interactive Bash script
+- **End-to-end CVE scanning pipeline**:
+  - Network scanning with Nmap + Vulners
+  - Structured parsing and storage in PostgreSQL
+  - Visual dashboards via Grafana
+- **Access isolation with Teleport**: users authenticate via Teleport to access any internal UI
+- **Scheduled scans with cron**
+- **Self-signed or Let’s Encrypt SSL**
+- **Secure ingress via NGINX reverse proxy**
+- **Optional support for Zabbix Proxy (monitoring)**
 
-## ▶️ **Lancer le script**
 
-Rendez le script exécutable :
+
+## Architecture
+
+
+
+```
+             Public Internet (HTTPS)
+                     │
+                     ▼
+              ┌────────────┐
+              │   NGINX    │
+              │  (SSL RP)  │
+              └────┬───────┘
+                   ▼
+            ┌──────────────┐
+            │   Teleport   │
+            │ (Access Hub) │
+            └────┬─────────┘
+                 │
+   ┌─────────────┼────────────────────┐
+   ▼             ▼                    ▼
+
+  Grafana      Portainer             UrBackup
+(Dashboards)  (Docker UI)           (Backups)
+
+
+
+    Internal-only (non-routable) Docker service
+
+┌──────────────────────────────────────────────────┐
+│  PostgreSQL                                      │
+│  Nmap Scanner                                    │
+│  Python Parser (CVE extraction)                  │
+│  Zabbix Proxy (optional)                         │
+└──────────────────────────────────────────────────┘
+
+````
+
+
+## Access Model
+
+| Component    | Access                  |
+|--------------|--------------------------|
+| Cloudflar        | Proxy |
+| NGINX        | Public (HTTPS, port 443) |
+| Teleport     | Internal (proxied by NGINX) |
+| All other UIs| Private (accessed via Teleport UI) |
+| Services     | Isolated within Docker network |
+
+All external access is authenticated and proxied through **Cloudflare and Teleport**, which serves as the central access gateway for all services (Grafana, Portainer, UrBackup, etc.).
+
+
+
+## Deployment
+
+### Prerequisites
+
+- Debian/Ubuntu server
+- Docker + Docker Compose
+- Public domain name (DNS must point to server IP)
+- Open ports: 80, 443 (Teleport, NGINX)
+
+### Install
 
 ```bash
 chmod +x deploy.sh
 ./deploy.sh
-```
+````
 
----
+You will be prompted for:
 
-## 🔧 **Configuration interactive**
+* Project directory name
+* Domain name
+* SSL type (Let’s Encrypt or self-signed)
+* Teleport configuration
+* CVE scan targets and frequency
+* PostgreSQL password
+* Zabbix proxy inclusion (optional)
 
-Lors de l'exécution, plusieurs informations vous seront demandées :
-
-| Entrée demandée                     | Description                            |
-| ----------------------------------- | -------------------------------------- |
-| 📁 Nom du projet                    | Crée un dossier pour tous les fichiers |
-| 🌐 Domaine public                   | Utilisé pour Nginx/Teleport/Certificat |
-| 🔐 Type de certificat               | Let's Encrypt (1) ou autosigné (2)     |
-| ✉️ Email Certbot                    | Requis pour Let's Encrypt              |
-| 📦 Installer Zabbix ?               | Active ou non le proxy Zabbix          |
-| 🔑 Mot de passe Zabbix proxy        | Si Zabbix est activé                   |
-| 📡 Lancer un scan initial ?         | Effectue un scan dès l'installation    |
-| ⏱️ Planifier des scans ?            | Active un cron job automatique         |
-| ⌛ Intervalle entre scans            | En jours (ex : `7`)                    |
-| 🕒 Heure du scan                    | Format `HH:MM`                         |
-| 🎯 Cible à scanner                  | IP / plage / domaine                   |
-| 🗃️ Conserver historique scans ?    | Oui ou suppression automatique         |
-| 🔐 Mot de passe PostgreSQL          | Valeur par défaut : `dojo123`          |
-| 🧹 Supprimer installation existante | Réinitialisation complète              |
-
----
-
-## 🛠️ **Ce que fait le script**
-
-1. **Vérifie ou installe Docker, Buildx, Compose**
-2. **Installe `cron` et l’active**
-3. **Crée l’arborescence du projet**
-4. **Génère les fichiers nécessaires :**
-
-   * `docker-compose.yaml`
-   * Certificat SSL (Let's Encrypt ou autosigné)
-   * Scripts de scan et parsing CVE
-   * Configuration Nginx
-   * Fichier `teleport.yaml`
-5. **Lance tous les conteneurs Docker**
-6. **Planifie les scans automatiques via `cron`** (si demandé)
-
----
-
-## 🔍 **Scan et parsing CVE**
-
-* Le service `cve-scanner` utilise **Nmap** et le script **vulners**.
-* Résultat sauvegardé dans un fichier XML.
-* Le script Python (`parse_and_insert.py`) :
-
-  * Parse le XML
-  * Extrait les CVE, versions, liens, CVSS
-  * Insère les données dans PostgreSQL
-
----
-
-## 📊 **Accès aux interfaces**
-
-| Service   | URL (via Teleport)            |
-| --------- | ----------------------------- |
-| Teleport  | `https://<domaine>`           |
+The script configures and deploys all services automatically.
+Please read the **DocTechnique**
 
 
-> ⚠️ Si vous avez utilisé un **certificat autosigné**, un avertissement apparaîtra dans le navigateur.
 
----
+## CVE Scan Pipeline
 
-## 👤 **Créer un utilisateur admin dans Teleport**
+1. **Nmap** scans a defined target with `--script vulners`.
+2. **Raw XML** output is saved in a mounted volume.
+3. **Python parser** extracts:
 
-Après déploiement :
+   * IP, port, service, version
+   * CVE ID, CVSS score, Vulners URL
+4. **PostgreSQL** stores results in a structured schema.
+5. **Grafana** visualizes the results through pre-configured dashboards.
+
+Scans can be run on-demand or automatically via cron.
+
+
+
+## Scheduled Scans
+
+During setup, you can define:
+
+* Frequency (daily, every N days)
+* Time (HH\:MM)
+* Target IPs or hostnames
+
+A cron job will execute `nmap`, parse the results, and update the database without manual intervention.
+
+
+
+## Services Included
+
+| Service      | Purpose                              | Access Method           |
+| ------------ | ------------------------------------ | ----------------------- |
+| Teleport     | Secure gateway for internal services | `https://<your-domain>` |
+| Grafana      | CVE dashboards                       | via Teleport            |
+| Portainer    | Docker management UI                 | via Teleport            |
+| UrBackup     | Backup interface                     | via Teleport            |
+| PostgreSQL   | CVE data store                       | Internal only           |
+| Nmap         | Network scanner                      | Internal only           |
+| CVE Parser   | Parses scan XML to DB                | Internal only           |
+| Zabbix Proxy | Optional monitoring agent            | Internal only           |
+| NGINX        | Reverse proxy with TLS               | Public (443)            |
+
+
+
+## Security Model
+
+* No service is directly exposed except NGINX (HTTPS)
+* All access flows through Teleport’s authenticated UI
+* Role-based access and session auditing via Teleport
+* TLS enforced with Let’s Encrypt or self-signed certs
+* Docker containers communicate via isolated bridge network
+
+
+## Post-Deployment
+
+1. **Create Teleport user:**
+
+   ```bash
+   docker exec -it teleport tctl users add admin --roles=access,editor
+   ```
+2. **Login to Teleport:** `https://your-domain.com`
+3. **Access internal services** from the Teleport dashboard
+4. **Import Grafana dashboards** or use the included JSON templates
+5. **Monitor scan results**, schedule tasks, or trigger scans on demand
+
+
+
+## Cloudflare Tunnel (Zero Trust)
+
+You can further restrict public exposure by using a Cloudflare tunnel:
 
 ```bash
-docker exec -it teleport tctl users add admin --roles=editor,access
+docker run -d \
+  --name cloudflared \
+  --restart unless-stopped \
+  cloudflare/cloudflared:latest \
+  tunnel --no-autoupdate run --token <YOUR_TOKEN>
 ```
-
----
-
-## 🔁 **Scan automatique via `cron`**
-
-Si activé, un job `cron` sera créé pour :
-
-* Lancer un scan Nmap régulier
-* Parse et insérer les vulnérabilités dans PostgreSQL
-
----
-
-## 📂 **Structure du projet généré**
-
-```
-<project_dir>/
-├── config/
-│   └── teleport.yaml
-├── data/
-├── nginx/
-│   ├── certs/
-│   └── conf.d/
-├── cve-scanner/
-│   ├── scans/
-│   └── scripts/
-│       ├── scan.sh
-│       ├── parse_and_insert.py
-│       └── Dockerfile
-├── docker-compose.yaml
-```
-
----
-
-## 🧹 **Nettoyage**
-
-Si vous répondez "Oui" à la suppression de l'ancienne installation :
-
-* Arrête et supprime les anciens conteneurs
-* Supprime les volumes et fichiers du dossier projet
-
----
-
-## 📦 **Images utilisées**
-
-* `nginx:alpine`
-* `portainer/portainer-ce:2.27.6`
-* `uroni/urbackup-server`
-* `postgres:13`
-* `grafana/grafana`
-* `instrumentisto/nmap`
-* `python:3.10-slim` *(pour le parser)*
-* `zabbix/zabbix-proxy-sqlite3` *(si activé)*
-* `public.ecr.aws/gravitational/teleport-distroless-debug:17.5.2`
-
----
-
-## ✅ **Post-installation conseillée**
-
-* Configurer les dashboards Grafana
-* Sécuriser les accès Teleport
-* Ajouter des scripts de mise à jour (optionnel)
-
