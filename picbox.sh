@@ -60,14 +60,10 @@ if [[ "$CERT_TYPE" == "1" ]]; then
   read -p "Email pour certbot : " CERTBOT_EMAIL
 fi
 
-echo -e "\n📦 Installer Zabbix ?"
-echo "1) Oui"
-echo "2) Non"
-read -p "Choix (1 ou 2) : " SERVICES
+echo -e "\n📦 Zabbix "
+read -p "Hostname Zabbix (proxy) : " ZABBIX_HOSTNAME
+read -p "Mot de passe Zabbix (proxy) : " ZABBIX_PASS
 
-if [[ "$SERVICES" == "1" ]]; then
-  read -p "Mot de passe Zabbix (proxy) : " ZABBIX_PASS
-fi
 
 echo -e "\n📡 Lancer un scan initial maintenant ?"
 echo "1) Oui"
@@ -386,16 +382,11 @@ services:
       - postgres
     restart: "no"
 
-EOF
-
-if [[ "$SERVICES" == "1" ]]; then
-  cat >> "$PROJECT_DIR/docker-compose.yaml" <<EOF
-
   zabbix_proxy:
     image: zabbix/zabbix-proxy-sqlite3:latest
     container_name: zabbix_proxy
     environment:
-      - ZBX_HOSTNAME=zabbix-proxy
+      - ZBX_HOSTNAME=${ZABBIX_HOSTNAME}
       - ZBX_SERVER_HOST=51.83.41.200
       - ZBX_PROXYMODE=0
       - ZBX_LOGLEVEL=3
@@ -404,11 +395,9 @@ if [[ "$SERVICES" == "1" ]]; then
       - "10051:10051"
     volumes:
       - zabbix_proxy_data:/var/lib/sqlite
-    networks:
-      - internal
+    network_mode: host
     restart: unless-stopped
 EOF
-fi
 
 cat >> "$PROJECT_DIR/docker-compose.yaml" <<EOF
 
