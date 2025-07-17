@@ -19,10 +19,10 @@ This repository provides an automated deployment script (`picbox.sh`) for a comp
 
 - Debian or Ubuntu-based system
 - Root or sudo privileges
-- Public domain name (if using Let's Encrypt)
+- Public domain name (For Cloudflare and the domain name for the script)
 - Internet connectivity
-- Open ports (The script handle this): 80, 443, 3022–3025, 3080, 3000, 9000, 55413, 35623/udp, 10051 (Zabbix)
-
+- Ports (The script handle this): 80, 443, 3022–3025, 3080, 3000, 9000, 55413, 35623/udp, 10051 (Zabbix)
+- Exposed Ports : 443, 3080, 3022, 3023, 3025, 10051
 
 
 ## Quick Start
@@ -41,7 +41,7 @@ The script will guide you through an interactive configuration process.
 | Parameter                    | Description                                            |
 | ---------------------------- | ------------------------------------------------------ |
 | Project name                 | Root directory for all generated files                 |
-| Public domain                | Used for HTTPS configuration (Teleport, Grafana, etc.) |
+| Public domain                | Used for HTTPS configuration (example.picinformatique.com) |
 | SSL certificate type         | Choose between Let's Encrypt or self-signed            |
 | Email (Let's Encrypt only)   | Required for Certbot registration                      |
 | Deploy Zabbix proxy          | Optional monitoring via Zabbix                         |
