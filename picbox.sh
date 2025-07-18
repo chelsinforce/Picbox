@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e # Arrêter l'exécution en cas d'erreu
+set -e # Arrêter l'exécution en cas d'erreur
 
 # === Fonctions pour afficher des messages colorés ===
 green()  { echo -e "\e[32m$1\e[0m"; } # Texte en vert
@@ -27,9 +27,6 @@ install_docker() {
     > /etc/apt/sources.list.d/docker.list
   apt-get update
   apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-  if ! command -v docker-compose &> /dev/null; then
-    alias docker-compose='docker compose'
-  fi
 }
 
 # === Génération de certificat autosigné (si sélectionné) ===
@@ -62,7 +59,11 @@ fi
 
 echo -e "\n📦 Zabbix "
 read -p "Hostname Zabbix (proxy) : " ZABBIX_HOSTNAME
-read -p "Mot de passe Zabbix (proxy) : " ZABBIX_PASS
+read -p "IP Zabbix (proxy) : " ZABBIX_IP
+read -p "Identité PSK (proxy) : " PSK_IDENTITY
+
+echo -e "\n🖥️ Serveur NGINX"
+read -p "IP de cloudflared (docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cloudflared): " CLOUDFLARE_IP
 
 
 echo -e "\n📡 Lancer un scan initial maintenant ?"
@@ -70,18 +71,10 @@ echo "1) Oui"
 echo "2) Non"
 read -p "Choix initial scan (1 ou 2) : " INIT_SCAN
 
-echo -e "\n⏱️ Planifier des scans automatiques ?"
-echo "1) Oui"
-echo "2) Non"
-read -p "Choix scans automatiques (1 ou 2) : " SCAN_AUT
-
-if [[ "$SCAN_AUT" == "1" ]]; then
-  read -p "Intervalle en jours entre chaque scan (laisser vide pour désactiver) : " SCAN_INTERVAL_DAYS
-  if [[ -n "$SCAN_INTERVAL_DAYS" ]]; then
-    read -p "Heure de lancement du scan (HH:MM, par ex. 03:00) : " SCAN_TIME
-  fi
-  read -p "Cible à scanner (IP, plage ou domaine) : " SCAN_TARGET
-fi
+echo -e "\n⏱️ Planification des scans automatiques "
+read -p "Intervalle en jours entre chaque scan (laisser vide pour désactiver) : " SCAN_INTERVAL_DAYS
+read -p "Heure de lancement du scan (HH:MM, par ex. 03:00) : " SCAN_TIME
+read -p "Cible à scanner (IP, plage ou domaine) : " SCAN_TARGET
 
 echo -e "\n🗃️ Conserver l'historique des anciens scans ?"
 echo "1) Oui"
@@ -131,7 +124,7 @@ fi
 # === Création de l'arborescence de fichiers et scripts nécessaires ===
 
 # Création des dossiers
-mkdir -p "$PROJECT_DIR"/{config,data,nginx/certs,nginx/conf.d,cve-scanner/scripts,cve-scanner/scans}
+mkdir -p "$PROJECT_DIR"/{config,data,nginx/certs,nginx/conf.d,cve-scanner/scripts,cve-scanner/scans,psk}
 
 # - Scripts Python de parsing
 
@@ -263,8 +256,12 @@ else
   generate_self_signed_cert "$DOMAIN" "$PROJECT_DIR/nginx/certs"
 fi
 
+# === Génération du fichier.psk de zabbix ===
+
+openssl rand -hex 32 > $PROJECT_DIR/psk/zabbix_proxy.psk
+
 # === Génération du fichier docker-compose.yaml ===
-# - Conteneurs : nginx, teleport, portainer, urbackup, postgres, grafana, zabbix (optionnel), scanner CVE, parser
+# - Conteneurs : nginx, teleport, portainer, urbackup, postgres, grafana, zabbix, scanner CVE, parser
 # - Configuration des volumes, réseaux, variables d'environnement
 
 cat > "$PROJECT_DIR/docker-compose.yaml" <<EOF
@@ -280,6 +277,7 @@ services:
       - ./nginx/certs:/etc/nginx/certs:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
     networks:
+      - cloudflared
       - proxy
     restart: unless-stopped
 
@@ -387,15 +385,15 @@ services:
     container_name: zabbix_proxy
     environment:
       - ZBX_HOSTNAME=${ZABBIX_HOSTNAME}
-      - ZBX_SERVER_HOST=51.83.41.200
+      - ZBX_SERVER_HOST=${ZABBIX_IP}
       - ZBX_PROXYMODE=0
       - ZBX_LOGLEVEL=3
-      - ZBX_PASS=${ZABBIX_PASS}
-    ports:
-      - "10051:10051"
+      - ZBX_TLSCONNECT=psk
+      - ZBX_TLSPSKFILE=/etc/zabbix/psk.key
+      - ZBX_TLSPSKIDENTITY=${PSK_IDENTITY}
     volumes:
-      - zabbix_proxy_data:/var/lib/sqlite
-    network_mode: host
+      - ./psk/zabbix_proxy.psk:/etc/zabbix/psk.key:ro
+      - zabbix_proxy_data:/var/lib/zabbix
     restart: unless-stopped
 EOF
 
@@ -404,6 +402,7 @@ cat >> "$PROJECT_DIR/docker-compose.yaml" <<EOF
 networks:
   proxy:
   internal:
+  cloudflared:
 
 volumes:
   grafana_data:
@@ -421,6 +420,9 @@ cat > "$PROJECT_DIR/nginx/conf.d/default.conf" <<EOF
 server {
   listen 443 ssl;
   server_name $DOMAIN;
+
+  allow $CLOUDFLARE_IP;
+  deny all;
 
   ssl_certificate /etc/nginx/certs/$DOMAIN.crt;
   ssl_certificate_key /etc/nginx/certs/$DOMAIN.key;
@@ -500,6 +502,11 @@ docker compose up -d
 
 green "✅ Déploiement préparé dans $PROJECT_DIR"
 yellow "⚠️ Pour créer un compte admin, exécutez : docker exec -it teleport tctl users add admin --roles=editor,access"
+yellow "⚠️ Renseignez ces données dans Zabbix pour authentifier le proxy :"
+yellow "- PSK Identity : $PSK_IDENTITY"
+yellow "- PSK Key :"
+yellow "  $(cat $PROJECT_DIR/psk/zabbix_proxy.psk)"
+
 [[ "$CERT_TYPE" == "2" ]] && yellow "⚠️ Certificat autosigné : un avertissement apparaîtra dans le navigateur."
 
 # === Planification d'un scan automatique avec cron si demandé ===

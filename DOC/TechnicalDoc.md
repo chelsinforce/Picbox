@@ -17,7 +17,7 @@ This repository provides an automated deployment script (`picbox.sh`) for a comp
 
 ## Requirements
 
-- Debian or Ubuntu-based system
+- Debian or Ubuntu-based system with at least 6 GIB of RAM
 - Root or sudo privileges
 - Public domain name (For Cloudflare and the domain name for the script)
 - Internet connectivity
@@ -28,6 +28,15 @@ This repository provides an automated deployment script (`picbox.sh`) for a comp
 ## Quick Start
 
 ```bash
+docker run -d \
+  --name cloudflared \
+  --restart unless-stopped \
+  --network teleportpicinformatiquecom_cloudflared \
+  cloudflare/cloudflared:latest \
+  tunnel --no-autoupdate run --token <your_token_here>
+
+docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cloudflared
+
 chmod +x deploy.sh
 ./deploy.sh
 ````
@@ -165,8 +174,6 @@ Crons are configured via the system crontab with custom time and interval.
 * Implement image update strategy (e.g. `docker-compose pull`)
 * Consider setting up log monitoring and alerting for critical CVEs
 
-
-
 ## Expose via Cloudflare Tunnel
 
 To avoid exposing public ports directly, you can use a secure Cloudflare Tunnel:
@@ -175,8 +182,9 @@ To avoid exposing public ports directly, you can use a secure Cloudflare Tunnel:
 docker run -d \
   --name cloudflared \
   --restart unless-stopped \
+  --network <domaine_utilisé_pour_projet(ex:teleportpicinformatiquecom)>_cloudflared \
   cloudflare/cloudflared:latest \
-  tunnel --no-autoupdate run --token <YOUR_TOKEN>
+  tunnel --no-autoupdate run --token <your_token_here> 
 ```
 
 Refer to the Cloudflare documentation for detailed setup.
