@@ -270,9 +270,6 @@ services:
   nginx:
     image: nginx:alpine
     container_name: nginx
-    ports:
-      - "443:443"
-      - "3080:3080"
     volumes:
       - ./nginx/certs:/etc/nginx/certs:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
