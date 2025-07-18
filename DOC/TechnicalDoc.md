@@ -146,6 +146,8 @@ Crons are configured via the system crontab with custom time and interval.
 │       ├── scan.sh             # Nmap scan script
 │       ├── parse_and_insert.py# Parser script
 │       └── Dockerfile          # Parser container build
+├── psk/
+│   └── zabbix_proxy.psk        # PSK key for Zabbix
 ├── docker-compose.yaml         # Complete service definition
 ```
 
@@ -162,7 +164,7 @@ Crons are configured via the system crontab with custom time and interval.
 | `grafana/grafana`                          | Visualization            |
 | `instrumentisto/nmap`                      | Nmap scanner             |
 | `python:3.10-slim`                         | CVE parser               |
-| `zabbix/zabbix-proxy-sqlite3` *(optional)* | Monitoring               |
+| `zabbix/zabbix-proxy-sqlite3`              | Monitoring               |
 | `teleport-distroless-debug:17.5.2`         | Secure access (Teleport) |
 
 ---
@@ -198,6 +200,6 @@ Refer to the Cloudflare documentation for detailed setup.
 | Teleport not accessible         | Check container logs and verify Nginx reverse proxy configuration     |
 | Cron jobs not running           | Verify `cron` is installed, enabled, and logs show successful runs    |
 | Self-signed certificate errors  | Use a browser exception or switch to Let's Encrypt for public domains |
-| cd errors  | Relaunch the script |
-| cat error for zabbix  | cd to the psk file (ProjetctDir/psk/) and cat the psk file there |
+| cd errors                       | Relaunch the script                                                   |
+| cat error for zabbix            | cd to the psk file (ProjetctDir/psk/) and cat the psk file there      |
 
