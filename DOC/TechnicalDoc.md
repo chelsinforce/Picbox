@@ -199,4 +199,5 @@ Refer to the Cloudflare documentation for detailed setup.
 | Cron jobs not running           | Verify `cron` is installed, enabled, and logs show successful runs    |
 | Self-signed certificate errors  | Use a browser exception or switch to Let's Encrypt for public domains |
 | cd errors  | Relaunch the script |
+| cat error for zabbix  | cd to the psk file (ProjetctDir/psk/) and cat the psk file there |
 
