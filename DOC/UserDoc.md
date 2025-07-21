@@ -146,19 +146,39 @@ Si vous avez répondu "Oui" à la suppression de l’ancienne installation, le s
      * 🔐 **PSK Identity** : `Ce que vous avez renseigné`
      * 🔑 **PSK Key** : `Donnée par le script`
 
+### ➕ Enrollement d'un serveur SSH linux
+
+Afin d'enroller un nouveau serveur, **ne cliquez pas sur enroller un serveur**
+
+**Sur la PICBOX**
+  
+  * Soyez root 
+  * Obtenez le tocken d'authentification : 
+
+    ```
+    docker exec -it teleport tctl tokens add --type=node --ttl=1h
+    ```
+
+  Vous obtennez alors un token. Seul ce token compte
+
+**Sur le serveur a enroller**
+
+  * Installer teleport 
+
+    ```
+    curl -fsSL https://goteleport.com/static/install.sh | bash -s 16.2.0
+    ```
+
+  * Initialiser la connection
+
+    ```
+    teleport start --roles=node --token=(token) --auth-server=(ipserver):3025 --nodename=(nom explicatif)
+    ```
+
+
 
 ### ✅ **Recommandation :**
 
 * Configurez **l'adresse IP du proxy en statique**
 * Renseignez **cette IP** dans la configuration du proxy sur Zabbix pour éviter tout problème de résolution ou détection
-
-
-## 🔚 Conclusion
-
-Une fois le script exécuté avec succès :
-
-* Tous les services sont disponibles via **Teleport**
-* Les connexions sont sécurisées via HTTPS (Let's Encrypt ou autosigné)
-* Le scanner CVE est prêt à fonctionner, avec ou sans planification
-* Vous pouvez gérer vos conteneurs via **Portainer**, visualiser les vulnérabilités via **Grafana**, et utiliser **Teleport** comme point d’accès sécurisé
 

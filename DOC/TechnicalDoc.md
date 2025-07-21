@@ -200,6 +200,8 @@ Refer to the Cloudflare documentation for detailed setup.
 | Teleport not accessible         | Check container logs and verify Nginx reverse proxy configuration     |
 | Cron jobs not running           | Verify `cron` is installed, enabled, and logs show successful runs    |
 | Self-signed certificate errors  | Use a browser exception or switch to Let's Encrypt for public domains |
-| cd errors                       | Relaunch the script                                                   |
-| cat error for zabbix            | cd to the psk file (ProjetctDir/psk/) and cat the psk file there      |
+| cd errors  | Relaunch the script |
+| Impossible to enroll a ssh server  | Disable the cloudflare 0 trust, deploy the server and enable it again |
+| The script don't give the psk key  | cat /path/to/zabbix_proxy.psk ($PROJECT_DIR/psk/zabbix_proxy.psk)|
+
 
