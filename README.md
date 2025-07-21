@@ -146,7 +146,7 @@ A cron job will execute `nmap`, parse the results, and update the database witho
 | Nmap         | Network scanner                      | Internal only           |
 | CVE Parser   | Parses scan XML to DB                | Internal only           |
 | Zabbix Proxy | Optional monitoring agent            | Internal only           |
-| NGINX        | Reverse proxy with TLS               | Public (443)            |
+| NGINX        | Reverse proxy with TLS               | Internal (443)            |
 
 
 
