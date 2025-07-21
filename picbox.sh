@@ -265,18 +265,7 @@ openssl rand -hex 32 > $PROJECT_DIR/psk/zabbix_proxy.psk
 # - Configuration des volumes, réseaux, variables d'environnement
 
 cat > "$PROJECT_DIR/docker-compose.yaml" <<EOF
-version: "3.8"
 services:
-  nginx:
-    image: nginx:alpine
-    container_name: nginx
-    volumes:
-      - ./nginx/certs:/etc/nginx/certs:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-    networks:
-      - cloudflared
-      - proxy
-    restart: unless-stopped
 
   teleport:
     image: public.ecr.aws/gravitational/teleport-distroless-debug:17.5.2
@@ -290,8 +279,9 @@ services:
       - "3022:3022"
       - "3023:3023"
       - "3025:3025"
+      - "3080:3080"
     networks:
-      - proxy
+      - cloudflared
       - internal
     restart: unless-stopped
 
@@ -467,10 +457,11 @@ ssh_service:
 
 proxy_service:
   enabled: true
+  public_addr: "$DOMAIN:443"
   web_listen_addr: 0.0.0.0:3080
-  public_addr: "$DOMAIN"
   ssh_public_addr: "$DOMAIN:3023"
   listen_addr: 0.0.0.0:3023
+  tunnel_listen_addr: 0.0.0.0:3024
 
 app_service:
   enabled: true
