@@ -170,8 +170,6 @@ Afin d'enroller un nouveau serveur, **ne cliquez pas sur enroller un serveur**
     teleport start --roles=node --token=(token) --auth-server=(ipserver):3025 --nodename=(nom explicatif)
     ```
 
-
-
 ### ✅ **Recommandation :**
 
 * Configurez **l'adresse IP du proxy en statique**

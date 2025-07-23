@@ -42,44 +42,80 @@ generate_self_signed_cert() {
   green "✅ Certificat autosigné créé dans $CERT_DIR"
 }
 
-# === Collecte des paramètres de configuration via input utilisateur ===
-# (Ex : nom de projet, domaine, type de certificat, base de données, etc.)
+# === Fonctions d'aide à la validation ===
+ask_non_empty() {
+  local prompt="$1"
+  local var
+  while true; do
+    read -p "$prompt" var
+    [[ -n "$var" ]] && echo "$var" && return
+    red "❌ Ce champ est obligatoire."
+  done
+}
 
-read -p "📁 Nom du projet (dossier) : " PROJECT_DIR
-read -p "🌐 Domaine public (ex: teleport.example.com) : " DOMAIN
+ask_choice() {
+  local prompt="$1"
+  shift
+  local valid_choices=("$@")
+  local var
+  while true; do
+    read -p "$prompt" var
+    for choice in "${valid_choices[@]}"; do
+      [[ "$var" == "$choice" ]] && echo "$var" && return
+    done
+    red "❌ Choix invalide. Réponse attendue : ${valid_choices[*]}"
+  done
+}
+
+ask_optional_time() {
+  local prompt="$1"
+  local var
+  while true; do
+    read -p "$prompt" var
+    [[ -z "$var" ]] && echo "" && return
+    if [[ "$var" =~ ^([01]?[0-9]|2[0-3]):[0-5][0-9]$ ]]; then
+      echo "$var"
+      return
+    else
+      red "❌ Format d'heure invalide. Format attendu : HH:MM (ex : 03:00)"
+    fi
+  done
+}
+
+# === Collecte des paramètres avec validations ===
+
+PROJECT_DIR=$(ask_non_empty "📁 Nom du projet (dossier) : ")
+DOMAIN=$(ask_non_empty "🌐 Domaine public (ex: teleport.example.com) : ")
 
 echo -e "\n🔐 Choix du certificat SSL :"
 echo "1) Let's Encrypt"
 echo "2) Certificat autosigné (self-signed)"
-read -p "Choix (1 ou 2) : " CERT_TYPE
+CERT_TYPE=$(ask_choice "Choix (1 ou 2) : " 1 2)
 
 if [[ "$CERT_TYPE" == "1" ]]; then
-  read -p "Email pour certbot : " CERTBOT_EMAIL
+  CERTBOT_EMAIL=$(ask_non_empty "Email pour certbot : ")
 fi
 
 echo -e "\n📦 Zabbix "
-read -p "Hostname Zabbix (proxy) : " ZABBIX_HOSTNAME
-read -p "IP Zabbix (proxy) : " ZABBIX_IP
-read -p "Identité PSK (proxy) : " PSK_IDENTITY
-
-echo -e "\n🖥️ Serveur NGINX"
-read -p "IP de cloudflared (docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cloudflared): " CLOUDFLARE_IP
-
+ZABBIX_HOSTNAME=$(ask_non_empty "Hostname Zabbix (proxy) : ")
+ZABBIX_IP=$(ask_non_empty "IP Zabbix (proxy) : ")
+PSK_IDENTITY=$(ask_non_empty "Identité PSK (proxy) : ")
 
 echo -e "\n📡 Lancer un scan initial maintenant ?"
 echo "1) Oui"
 echo "2) Non"
-read -p "Choix initial scan (1 ou 2) : " INIT_SCAN
+INIT_SCAN=$(ask_choice "Choix initial scan (1 ou 2) : " 1 2)
 
 echo -e "\n⏱️ Planification des scans automatiques "
 read -p "Intervalle en jours entre chaque scan (laisser vide pour désactiver) : " SCAN_INTERVAL_DAYS
-read -p "Heure de lancement du scan (HH:MM, par ex. 03:00) : " SCAN_TIME
-read -p "Cible à scanner (IP, plage ou domaine) : " SCAN_TARGET
+SCAN_TIME=$(ask_optional_time "Heure de lancement du scan (HH:MM, ex. 03:00) : ")
+
+SCAN_TARGET=$(ask_non_empty "Cible à scanner (IP, plage ou domaine) : ")
 
 echo -e "\n🗃️ Conserver l'historique des anciens scans ?"
 echo "1) Oui"
 echo "2) Non – supprimer les anciens"
-read -p "Choix (1 ou 2) : " KEEP_HISTORY
+KEEP_HISTORY=$(ask_choice "Choix (1 ou 2) : " 1 2)
 
 read -p "🔐 Mot de passe PostgreSQL (laisser vide = 'dojo123') : " DB_PASS
 DB_PASS=${DB_PASS:-dojo123}
@@ -238,27 +274,30 @@ EOF
 
 chmod +x "$PROJECT_DIR/cve-scanner/scripts/scan.sh"
 
-# === Obtention du certificat SSL (Let's Encrypt ou autosigné) ===
+# === Pour le certificat autosigné ===
+IP_ADDRESS=$(ip -4 addr show scope global | grep inet | awk '{print $2}' | cut -d/ -f1 | head -n1)
 
-if [[ "$CERT_TYPE" == "1" ]]; then
-  blue "📥 Obtention du certificat Let's Encrypt..."
-  if ! docker run --rm -v "$PROJECT_DIR/nginx/certs:/etc/letsencrypt" \
-       -v "$PROJECT_DIR/nginx/conf.d:/var/www/certbot" \
-       certbot/certbot certonly \
-       --webroot -w /var/www/certbot \
-       --email "$CERTBOT_EMAIL" --agree-tos --no-eff-email -d "$DOMAIN"; then
-    red "❌ Échec de Certbot, vérifie la config du domaine et que port 80 est ouvert."
-    exit 1 # - Si Let's Encrypt échoue, arrêt du script avec message d'erreur
-  fi
-  cp "$PROJECT_DIR/nginx/certs/live/$DOMAIN/fullchain.pem" "$PROJECT_DIR/nginx/certs/$DOMAIN.crt"
-  cp "$PROJECT_DIR/nginx/certs/live/$DOMAIN/privkey.pem" "$PROJECT_DIR/nginx/certs/$DOMAIN.key"
-else
-  generate_self_signed_cert "$DOMAIN" "$PROJECT_DIR/nginx/certs"
-fi
+cat > "cert.conf" <<EOF 
+[req]
+default_bits       = 2048                  # Taille de la clé RSA : 2048 bits (standard recommandé)
+distinguished_name = req_distinguished_name # Section contenant les infos du sujet du certificat (DN)
+req_extensions     = req_ext               # Extensions à inclure dans la CSR (demande de certificat)
+x509_extensions    = v3_req                # Extensions à inclure si on génère un certificat auto-signé
+prompt             = no                    # Ne pas demander les infos à l'utilisateur (valeurs fixes ci-dessous)
 
-# === Génération du fichier.psk de zabbix ===
+[req_distinguished_name]
+CN = $DOMAIN          # Nom commun (Common Name) : nom DNS du serveur
 
-openssl rand -hex 32 > $PROJECT_DIR/psk/zabbix_proxy.psk
+[req_ext]
+subjectAltName = @alt_names                # Extension SAN (Subject Alternative Name) pour la CSR
+
+[v3_req]
+subjectAltName = @alt_names                # Extension SAN pour un certificat auto-signé
+
+[alt_names]
+DNS.1   = $DOMAIN     # SAN de type DNS : nom de domaine alternatif accepté
+IP.1    = $IP_ADDRESS                  # SAN de type IP : adresse IP alternative acceptée
+EOF
 
 # === Génération du fichier docker-compose.yaml ===
 # - Conteneurs : nginx, teleport, portainer, urbackup, postgres, grafana, zabbix, scanner CVE, parser
@@ -401,36 +440,27 @@ volumes:
 
 EOF
 
-# === Configuration du reverse proxy NGINX pour Teleport et redirections HTTPS ===
+# === Obtention du certificat SSL (Let's Encrypt ou autosigné) ===
 
-cat > "$PROJECT_DIR/nginx/conf.d/default.conf" <<EOF
-server {
-  listen 443 ssl;
-  server_name $DOMAIN;
+if [[ "$CERT_TYPE" == "1" ]]; then
+  blue "📥 Obtention du certificat Let's Encrypt..."
+  if ! docker run --rm -v "$PROJECT_DIR/nginx/certs:/etc/letsencrypt" \
+       -v "$PROJECT_DIR/nginx/conf.d:/var/www/certbot" \
+       certbot/certbot certonly \
+       --webroot -w /var/www/certbot \
+       --email "$CERTBOT_EMAIL" --agree-tos --no-eff-email -d "$DOMAIN"; then
+    red "❌ Échec de Certbot, vérifie la config du domaine et que port 80 est ouvert."
+    exit 1 # - Si Let's Encrypt échoue, arrêt du script avec message d'erreur
+  fi
+  cp "$PROJECT_DIR/nginx/certs/live/$DOMAIN/fullchain.pem" "$PROJECT_DIR/nginx/certs/$DOMAIN.crt"
+  cp "$PROJECT_DIR/nginx/certs/live/$DOMAIN/privkey.pem" "$PROJECT_DIR/nginx/certs/$DOMAIN.key"
+else
+  generate_self_signed_cert "$DOMAIN" "$PROJECT_DIR/nginx/certs"
+fi
 
-  allow $CLOUDFLARE_IP;
-  deny all;
+# === Génération du fichier.psk de zabbix ===
 
-  ssl_certificate /etc/nginx/certs/$DOMAIN.crt;
-  ssl_certificate_key /etc/nginx/certs/$DOMAIN.key;
-
-  location / {
-    proxy_pass https://teleport:3080;
-    proxy_set_header Host \$host;
-    proxy_set_header X-Forwarded-Proto \$scheme;
-    proxy_set_header X-Forwarded-For \$remote_addr;
-  }
-}
-
-server {
-  listen 3080;
-  server_name $DOMAIN;
-
-  location / {
-    return 301 https://$host$request_uri;
-  }
-}
-EOF
+openssl rand -hex 32 > $PROJECT_DIR/psk/zabbix_proxy.psk
 
 # === Configuration de Teleport via teleport.yaml ===
 # - Ajout d'applications (portainer, urbackup, grafana)
