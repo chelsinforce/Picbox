@@ -78,9 +78,29 @@ Afin de sécuriser le tout, il faut mêtre en place des certificats.
 
 - Cliquez sur le domaine :
 
-  https://github.com/chelsinforce/Picbox/blob/d918af9b7db433d559d11458f0d3a8e2b069581e/DOC/Images/Cloudflare%20Start.png
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/d918af9b7db433d559d11458f0d3a8e2b069581e/DOC/Images/Cloudflare%20Start.png)
 
+- Allez dans Edge Certificate
 
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a507e0991c743223765a8bf7d72e9ae284c96e6a/DOC/Images/Cloudflare%20Edge%20cert.png)
+
+- Demander un nouveau certificat
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a507e0991c743223765a8bf7d72e9ae284c96e6a/DOC/Images/Cloudflare%20Order%20Advanced%20Cert.png)
+
+- Cliquez sur les Hostnames
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a507e0991c743223765a8bf7d72e9ae284c96e6a/DOC/Images/Cloudflare%20Ajout%20Nom%20Domaine.png)
+
+- Ajouter le domaine *.le nom du client et cliquez sur le domaine qui apparait en dessous et sauvegardez
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a507e0991c743223765a8bf7d72e9ae284c96e6a/DOC/Images/Cloudflare%20Validation%20Cert.png)
+
+#### 3. **Création du tunel cloudflare**
+
+Une fois le certificat enregistré, il faut créer un tunnel : 
+
+- 
 
 
 
