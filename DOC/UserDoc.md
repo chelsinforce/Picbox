@@ -4,6 +4,11 @@
 ### **Pré-requis**
 
 * Serveur Debian (recommendé) /Ubuntu récent
+* Mémoire RAM : 16 Go minimum
+* Stockage : Espace disque suffisant pour :
+  - L'application
+  - Les sauvegardes
+  - Les journaux système et applicatifs
 * Accès `root` ou `sudo`
 * Docker non nécessairement préinstallé (le script l’installe si absent)
 * Un domaine public pointant vers le serveur (ex: `teleport.example.com`)
