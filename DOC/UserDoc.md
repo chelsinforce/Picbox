@@ -270,3 +270,56 @@ Une fois le certificat enregistré, il faut créer un tunnel :
 
 #### 6. Etablisement du ZERO TRUST Cloudflare 
 
+Afin de sécuriser l'accès et l'autoriser qu'as PIC, un ZERO TRUST Cloudflare est nécéssaire. 
+
+  - Allez dans la partie ZERO TRUST de cloudflare et allez dans Access
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%201.png)
+
+- Cliquez en suite sur Application
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%202.png)
+
+- Créer une nouvelle app
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%203.png)
+
+- Sélectionner self hosted
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%204.png)
+
+- Nommer votre app
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%205.png)
+
+- Mettez le domaine (nomclient.picinformatique.com)
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%206.png)
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%207.png)
+
+- Mettez la politique d'accès Mail et confirmer
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%208.png)
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%209.png)
+
+- Tester la politique
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%2010.png)
+
+- Cliquez sur Next, Next et Save
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%2011.png)
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%2012.png)
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%2013.png)
+
+Déploiement de la PICBOX Terminé. Les outils a l'intérieurs de la PICBOX sont a conigurée a votre guise
+
+Note : En ce qui concerne Portaner, vous allez devoir redémarer le conteneur ( Limite de temps dépasé)
+
+```
+docker compose restart portainer
+```
