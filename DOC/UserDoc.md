@@ -159,7 +159,7 @@ Une fois le certificat enregistré, il faut créer un tunnel :
 
   Et cliquez sur terminer.
   
-#### 4. **Ajout du CNAME manquant
+#### 4. Ajout du CNAME manquant
 
   Lors de la création du tunnel, Vous allez avoir une alerte nous disant qu'un enregistrement ne sera pas fait. Vous devez le faire vous même.
 
@@ -167,7 +167,29 @@ Une fois le certificat enregistré, il faut créer un tunnel :
 
   - Sélectionner le bon compte
 
-  - 
+  - Accéder a DNS
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/461b512a6c627a88e3fb59658bc1dcaeb1995c8e/DOC/Images/Cloudflare%20DNS%201.png)
+
+  - Cliquez sur ajouter un nouvel enregistrement
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/461b512a6c627a88e3fb59658bc1dcaeb1995c8e/DOC/Images/Cloudflare%20DNS%202.png)
+
+  - Cliquez sur TYPE et donner CNAME
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/461b512a6c627a88e3fb59658bc1dcaeb1995c8e/DOC/Images/Cloudflare%20DNS%204.png)
+
+  - Dans nom, tapez *.nomclient (modifer nomclient bien entendu)
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/461b512a6c627a88e3fb59658bc1dcaeb1995c8e/DOC/Images/Cloudflare%20DNS%205.png)
+
+  - Dans Cible (Target) entrez l'ID du tunnel (Vous le trouverez dans l'enregistrement CNAME de nomclient
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/461b512a6c627a88e3fb59658bc1dcaeb1995c8e/DOC/Images/Cloudflare%20DNS%206.png)
+
+ - Entrer une descriptions et sauvegarder
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/461b512a6c627a88e3fb59658bc1dcaeb1995c8e/DOC/Images/Cloudflare%20DNS%207.png)
 
 #### 5. **Accès a Teleport**
 
@@ -235,7 +257,7 @@ Une fois le certificat enregistré, il faut créer un tunnel :
 
     ##### Si il faut créer l'utilisateur
 
-    Tapez cs commandes en étant root sur le serveur de destination :
+    Tapez ces commandes en étant root sur le serveur de destination :
 
     ```bash
     sudo adduser pic
