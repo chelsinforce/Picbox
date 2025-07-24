@@ -72,7 +72,23 @@ Le script va :
 * Fréquence des scans CVE
 * Suppression de l’ancienne installation (optionnel)
 
-#### 2. **Création du tunel cloudflare**
+#### 2. **Création du certificat cloudflare**
+
+Afin de sécuriser le tout, il faut mêtre en place des certificats. 
+
+- Cliquez sur le domaine :
+
+  
+
+
+
+
+
+
+
+
+
+
 
 Dans le tableau de bord Cloudflare Zero Trust :
 
