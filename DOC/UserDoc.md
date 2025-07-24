@@ -1,24 +1,23 @@
 ## 🛠️ **Documentation Utilisateur : Déploiement de l’environnement Picbox**
 
-
 ### **Pré-requis**
 
-* Serveur Debian (recommendé) /Ubuntu récent
+* Serveur Debian (recommandé) / Ubuntu récent
 * Mémoire RAM : 16 Go minimum
-* Stockage : Espace disque suffisant pour :
-  - L'application
-  - Les sauvegardes
-  - Les journaux système et applicatifs
+* Stockage : espace disque suffisant pour :
+  - l’application
+  - les sauvegardes
+  - les journaux système et applicatifs
 * Accès `root` ou `sudo`
-* Docker non nécessairement préinstallé (le script l’installe si absent)
-* Un domaine public pointant vers le serveur (ex: `teleport.example.com`)
+* Docker pas nécessairement préinstallé (le script l’installe si absent)
+* Un domaine public pointant vers le serveur (ex : `teleport.example.com`)
 * Un token Cloudflare Tunnel Zero Trust
 
 ### **Étapes du déploiement**
 
 #### 1. **Lancer le script de déploiement**
 
-Créer un fichier pour la PICBOX (pas besoin si vous clonnez le code, le fichier viens avec) a la racine.
+Créer un dossier pour la PICBOX (pas besoin si vous clonez le code, le fichier vient avec) à la racine.
 
 ```bash
 cd /
@@ -28,25 +27,25 @@ cd PICBOX
 
 Téléchargez ou copiez le script complet et exécutez-le :
 
-- Pour le copier depuis le presse papier : 
+- Pour le copier depuis le presse-papiers : 
 
 ```bash
 nano deploy.sh
 
-#Ctrl + shift + v ou click droit si connecté en ssh
+# Ctrl + Shift + V ou clic droit si connecté en SSH
 
-# Ctrl + x et y puis Entrée
+# Ctrl + X puis Y, puis Entrée
 ```
 
-- Pour le copier depuis un repo : 
+- Pour le copier depuis un dépôt : 
 
 ```bash
 apt update
 apt install git
 
-git clone (le liens du repo)
+git clone (le lien du repo)
 ```
-Donner les droits nécéssaire et exécuté le script
+Donnez les droits nécessaires et exécutez le script :
 
 ```bash
 chmod +x deploy.sh
@@ -57,181 +56,270 @@ Le script va :
 
 * Installer Docker si besoin
 * Vous demander les informations nécessaires
-* Générer les certificats (Autosigné (testé et approuver) ou Let’s Encrypt(a tester)) 
+* Générer les certificats (Autosigné (testé et approuvé) ou Let’s Encrypt (à tester)) 
 * Configurer Teleport, Portainer, Zabbix Proxy, Nginx, Grafana, PostgreSQL, etc.
 * Lancer tous les conteneurs via `docker compose`
 
-**Renseigné bien toutes les informations**
+**Renseignez bien toutes les informations**
 
 * Nom du dossier de projet
 * Domaine public (`teleport.mondomaine.com`)
 * Type de certificat (Let’s Encrypt ou autosigné)
 * Email pour Certbot (si Let's Encrypt)
 * Données Zabbix Proxy (hostname, IP du serveur Zabbix et un identifiant spk)
-* Mot de passe PostgreSQL (par défaut : `dojo123` **A CHANGER**)
+* Mot de passe PostgreSQL (par défaut : `dojo123` **À CHANGER**)
 * Fréquence des scans CVE
 * Suppression de l’ancienne installation (optionnel)
 
-#### 2. **Création du tunel cloudflare**
+#### 2. **Création du certificat Cloudflare**
 
-Dans le tableau de bord Cloudflare Zero Trust :
+Afin de sécuriser l’ensemble, il faut mettre en place des certificats. 
 
-1. Créez un **tunnel** dans l’interface Cloudflare.
-2. Récupérez le **token de connexion** fourni.
+- Cliquez sur le domaine :
 
-Référez vous a la doc Cloudflare
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/d918af9b7db433d559d11458f0d3a8e2b069581e/DOC/Images/Cloudflare%20Start.png)
 
-Ensuite, exécutez les commandes suivantes **sur le serveur** :
+- Allez dans Edge Certificate
 
-```bash
-docker network create <domaine_utilisé_pour_projet>_cloudflared
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a507e0991c743223765a8bf7d72e9ae284c96e6a/DOC/Images/Cloudflare%20Edge%20cert.png)
 
-docker run -d \
-  --name cloudflared \
-  --restart unless-stopped \
-  --network <domaine_utilisé_pour_projet>_cloudflared \
-  cloudflare/cloudflared:latest \
-  tunnel --no-autoupdate run --token <votre_token_cloudflare>
-```
-> Remplacez `<votre_token_cloudflare>` par votre token réel.
-> Remplacez `<domaine_utilisé_pour_projet>` par votre domaine réel. (ex:teleportpicinformatiquecom)
+- Demandez un nouveau certificat
 
-#### 2. 🔍 **Récupérer l’IP du conteneur Cloudflared**
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a507e0991c743223765a8bf7d72e9ae284c96e6a/DOC/Images/Cloudflare%20Order%20Advanced%20Cert.png)
 
-Exécutez :
+- Cliquez sur les Hostnames
 
-```bash
-docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cloudflared
-```
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a507e0991c743223765a8bf7d72e9ae284c96e6a/DOC/Images/Cloudflare%20Ajout%20Nom%20Domaine.png)
 
-Notez l’IP affichée (ex: `172.20.0.3`) — elle sera utilisée pour configurer NGINX.
+- Ajoutez le domaine *.lenomduclient et cliquez sur le domaine qui apparaît en dessous puis sauvegardez
 
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a507e0991c743223765a8bf7d72e9ae284c96e6a/DOC/Images/Cloudflare%20Validation%20Cert.png)
 
-#### 3. 🚀 **Lancer le script de déploiement**
+#### 3. **Création du tunnel Cloudflare**
 
-Téléchargez ou copiez le script complet et exécutez-le :
+Une fois le certificat enregistré, il faut créer un tunnel : 
 
-```bash
-chmod +x deploy.sh
-./deploy.sh
-```
+- Allez dans le portail Zero Trust
 
-Le script va :
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a7dd8bcebef051b40e90cc7189c59291015a23b0/DOC/Images/Cloudflare%200%20Trust%20Access.png)
 
-* Installer Docker si besoin
-* Vous demander les informations nécessaires
-* Générer les certificats (Let’s Encrypt ou autosigné)
-* Configurer Teleport, Portainer, Zabbix Proxy, Nginx, Grafana, PostgreSQL, etc.
-* Lancer tous les conteneurs via `docker compose`
+- Cliquez sur Network
 
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a7dd8bcebef051b40e90cc7189c59291015a23b0/DOC/Images/Cloudflare%200%20Trust%20Network.png)
 
-#### 4. 📥 **Répondez aux questions posées par le script**
+- Cliquez sur Tunnels
 
-Vous devrez fournir des informations comme :
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a7dd8bcebef051b40e90cc7189c59291015a23b0/DOC/Images/Cloudflare%200%20Trust%20Tunnels.png)
 
-* Nom du dossier de projet
-* Domaine public (`teleport.mondomaine.com`)
-* Type de certificat (Let’s Encrypt ou autosigné)
-* Email pour Certbot (si Let's Encrypt)
-* IP de Cloudflared (cf. étape 2)
-* Données Zabbix Proxy (hostname, IP du serveur Zabbix et un identifiant spk)
-* Mot de passe PostgreSQL (par défaut : `dojo123`)
-* Fréquence des scans CVE (si souhaité)
-* Suppression de l’ancienne installation (optionnel)
+- Et créez un Tunnel
 
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a7dd8bcebef051b40e90cc7189c59291015a23b0/DOC/Images/Cloudflare%200%20Trust%20Create%20Tunnel.png)
 
-#### 5. 🧑‍💼 **Créer un compte administrateur Teleport**
+- Nommez votre Tunnel
 
-Une fois les services déployés, créez un utilisateur administrateur Teleport :
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a7dd8bcebef051b40e90cc7189c59291015a23b0/DOC/Images/Cloudflare%200%20Trust%20Tunnel%20Name.png)
 
-```bash
-docker exec -it teleport tctl users add admin --roles=editor,access
-```
+- Sélectionnez Cloudflared
 
-Vous recevrez un **lien de connexion** avec un **code d’inscription** à saisir dans le navigateur.
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a7dd8bcebef051b40e90cc7189c59291015a23b0/DOC/Images/Cloudflare%200%20Trust%20Cloudflared.png)
 
-> ⚠️ Accédez à Teleport sans le port `3080` dans l’URL (utilisez simplement `https://teleport.mondomaine.com`).
+- Choisissez votre environnement (**DOCKER POUR LA PICBOX**) et copiez la commande qui s’affiche.
 
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a7dd8bcebef051b40e90cc7189c59291015a23b0/DOC/Images/Cloudflare%200%20Trust%20Choose%20Environment.png)
 
-#### 6. 📂 **Accès à Portainer (attention au délai !)**
+- Modifiez-la pour qu’elle ressemble à ceci :
 
-* Portainer est **exposé via Teleport** sous `https://portainer.mondomaine.com`
-* **Connectez-vous rapidement**, sinon le conteneur peut se couper automatiquement au bout de 5 minutes (selon config)
+  ```bash
+  docker run -d \
+    --name cloudflared \
+    --restart unless-stopped \
+    --network <domaine_utilise_pour_projet_sans_point>_cloudflared \
+    cloudflare/cloudflared:latest \
+    tunnel --no-autoupdate run --token <votre_token_cloudflare>
+  ```
 
+  Pour le domaine, il ressemblera à : nomclientpicinformatiquecom
 
-#### 7. 🖼️ **Picbox & autres services**
+  Une fois la connexion faite et validée, appuyez sur Suivant :
 
-* **UrBackup** : [https://urbackup.mondomaine.com](https://urbackup.mondomaine.com)
-* **Grafana** (visualisation des vulnérabilités) : [https://grafana.mondomaine.com](https://grafana.mondomaine.com)
-* **Portainer** : gestion de conteneurs Docker
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a7dd8bcebef051b40e90cc7189c59291015a23b0/DOC/Images/Cloudflare%200%20Trust%20Tunnel%20Next.png)
 
+- Assignez le nom de domaine et les services à contacter
 
-### 🕐 **Planification automatique des scans CVE**
+  Pour le nom de domaine, il s’agit du domaine donné auparavant
 
-Si vous avez choisi de planifier des scans :
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/a7dd8bcebef051b40e90cc7189c59291015a23b0/DOC/Images/Cloudflare%200%20Trust%20Domaine.png)
 
-* Le script configure un **cron job** automatiquement.
-* Il exécutera régulièrement :
+  Concernant les services, dans le cadre de la PICBOX, il faut renseigner HTTPS et teleport:3080
 
-  * Le scan Nmap avec détection CVE
-  * Le parsing et insertion des données dans PostgreSQL
-  * Visualisation via Grafana
+  **ATTENTION : Si vous avez un certificat autosigné installé, il faut activer le NO TLS VERIFY**
 
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/346554bfa151f81a38d22e6df5294691a31e5112/DOC/Images/Cloudflare%200%20Trust%20NO%20TLS%20VERIFY.png)
 
-### 🧹 **Nettoyage**
+  Puis cliquez sur Terminer.
 
-Si vous avez répondu "Oui" à la suppression de l’ancienne installation, le script :
+#### 4. **Ajout du CNAME manquant**
 
-* Supprime les volumes et données existantes
-* Supprime le dossier du projet
+  Lors de la création du tunnel, vous allez avoir une alerte vous disant qu’un enregistrement ne sera pas fait. Vous devez le faire vous-même.
 
-### 📰 **ZABBIX — Configuration du Proxy**
+  - Cliquez sur le logo de Cloudflare
 
-1. **Accédez à l'interface du serveur Zabbix**.
+  - Sélectionnez le bon compte
 
-2. Naviguez vers :
-   **`Administration` → `Proxies`**
+  - Accédez à DNS
 
-3. **Créez un nouveau proxy** avec :
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/461b512a6c627a88e3fb59658bc1dcaeb1995c8e/DOC/Images/Cloudflare%20DNS%201.png)
 
-   * **Le même nom** que celui utilisé dans le script (`Hostname`)
-   * **Le type d’authentification** configuré (ex. : PSK)
-   * **Les informations suivantes** :
+  - Cliquez sur Ajouter un nouvel enregistrement
 
-     * 🔐 **PSK Identity** : `Ce que vous avez renseigné`
-     * 🔑 **PSK Key** : `Donnée par le script`
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/461b512a6c627a88e3fb59658bc1dcaeb1995c8e/DOC/Images/Cloudflare%20DNS%202.png)
 
-### ➕ Enrollement d'un serveur SSH linux
+  - Cliquez sur TYPE et choisissez CNAME
 
-Afin d'enroller un nouveau serveur, **ne cliquez pas sur enroller un serveur**
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/461b512a6c627a88e3fb59658bc1dcaeb1995c8e/DOC/Images/Cloudflare%20DNS%204.png)
+
+  - Dans Nom, tapez *.nomclient (modifiez nomclient bien entendu)
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/461b512a6c627a88e3fb59658bc1dcaeb1995c8e/DOC/Images/Cloudflare%20DNS%205.png)
+
+  - Dans Cible (Target), entrez l’ID du tunnel (vous le trouverez dans l’enregistrement CNAME de nomclient)
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/461b512a6c627a88e3fb59658bc1dcaeb1995c8e/DOC/Images/Cloudflare%20DNS%206.png)
+
+  - Entrez une description et sauvegardez
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/461b512a6c627a88e3fb59658bc1dcaeb1995c8e/DOC/Images/Cloudflare%20DNS%207.png)
+
+#### 5. **Accès à Teleport**
+
+  - Accédez à votre domaine
+
+    Vous arriverez alors sur cette page après avoir accepté les conditions d’utilisation :
+
+    ![alt text](https://github.com/chelsinforce/Picbox/blob/458083d7dbf9d8e6237fc876ba62520aea62ebeb/DOC/Images/Teleport%20SETUP%201%20.png)
+
+  - Retournez dans le terminal de la PICBOX et tapez (copier-coller) cette commande :
+
+    ```bash
+    docker exec -it teleport tctl users add admin --roles=editor,access
+    ```
+  Une URL vous sera donnée (Ctrl + clic gauche pour ouvrir dans le navigateur)
+
+  Créez votre compte pour arriver sur le portail :
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/458083d7dbf9d8e6237fc876ba62520aea62ebeb/DOC/Images/Teleport%20SETUP%202.png)
+
+ #### 5.1. **Ajout de serveur SSH**
+
+ Afin d’enrôler un nouveau serveur, **ne cliquez pas sur « enrôler un serveur »**
 
 **Sur la PICBOX**
   
   * Soyez root 
-  * Obtenez le tocken d'authentification : 
+  - Obtenez le token d’authentification : 
 
     ```
     docker exec -it teleport tctl tokens add --type=node --ttl=1h
     ```
 
-  Vous obtennez alors un token. Seul ce token compte
+  Vous obtenez alors un token. Seul ce token compte.
 
-**Sur le serveur a enroller**
+**Sur le serveur à enrôler**
 
-  * Installer teleport 
+  - Installez teleport : 
 
     ```
     curl -fsSL https://goteleport.com/static/install.sh | bash -s 16.2.0
     ```
 
-  * Initialiser la connection
+  - Initialisez la connexion :
 
     ```
     teleport start --roles=node --token=(token) --auth-server=(ipserver):3025 --nodename=(nom explicatif)
     ```
 
-### ✅ **Recommandation :**
+  - Modifiez la règle Access
 
-* Configurez **l'adresse IP du proxy en statique**
-* Renseignez **cette IP** dans la configuration du proxy sur Zabbix pour éviter tout problème de résolution ou détection
+    Pour ce faire, allez sur Zero Trust Access -> Roles
 
+    ![alt text](https://github.com/chelsinforce/Picbox/blob/458083d7dbf9d8e6237fc876ba62520aea62ebeb/DOC/Images/Teleport%20SETUP%203.png)
+
+    Une fois dans la fenêtre, cliquez sur Options puis sur Éditer le rôle access
+
+    ![alt text](https://github.com/chelsinforce/Picbox/blob/458083d7dbf9d8e6237fc876ba62520aea62ebeb/DOC/Images/Teleport%20SETUP%204.png)
+
+    Allez sur Resources et ajoutez l’utilisateur pic (**Cet utilisateur doit déjà être présent sur le serveur de destination**)
+
+    ![alt text](https://github.com/chelsinforce/Picbox/blob/458083d7dbf9d8e6237fc876ba62520aea62ebeb/DOC/Images/Teleport%20SETUP%205.png)
+
+    Sauvegardez et testez la connexion.
+
+    ##### Si vous devez créer l’utilisateur
+
+    Tapez ces commandes en étant root sur le serveur de destination :
+
+    ```bash
+    sudo adduser pic
+    sudo usermod -aG sudo pic # Si sudo n’est pas installé sur la machine, il ne faut pas taper cette commande et retirez sudo des commandes
+
+    # Si les commandes ci-dessus ne fonctionnent pas :
+
+    sudo useradd -m -s /bin/bash nom_utilisateur
+    sudo passwd nom_utilisateur
+    ```
+
+#### 6. Etablisement du ZERO TRUST Cloudflare 
+
+Afin de sécuriser l'accès et l'autoriser qu'as PIC, un ZERO TRUST Cloudflare est nécéssaire. 
+
+  - Allez dans la partie ZERO TRUST de cloudflare et allez dans Access
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%201.png)
+
+- Cliquez en suite sur Application
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%202.png)
+
+- Créer une nouvelle app
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%203.png)
+
+- Sélectionner self hosted
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%204.png)
+
+- Nommer votre app
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%205.png)
+
+- Mettez le domaine (nomclient.picinformatique.com)
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%206.png)
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%207.png)
+
+- Mettez la politique d'accès Mail et confirmer
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%208.png)
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%209.png)
+
+- Tester la politique
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%2010.png)
+
+- Cliquez sur Next, Next et Save
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%2011.png)
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%2012.png)
+
+  ![alt text](https://github.com/chelsinforce/Picbox/blob/17653bd255846fe7f8e2aea70f178036202a459e/DOC/Images/Cloudflare%200%20Trust%20App%2013.png)
+
+Déploiement de la PICBOX Terminé. Les outils a l'intérieurs de la PICBOX sont a conigurée a votre guise
+
+Note : En ce qui concerne Portaner, vous allez devoir redémarer le conteneur ( Limite de temps dépasé)
+
+```
+docker compose restart portainer
+```
