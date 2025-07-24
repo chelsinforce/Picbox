@@ -78,7 +78,7 @@ Afin de sécuriser le tout, il faut mêtre en place des certificats.
 
 - Cliquez sur le domaine :
 
-  
+  https://github.com/chelsinforce/Picbox/blob/d918af9b7db433d559d11458f0d3a8e2b069581e/DOC/Images/Cloudflare%20Start.png
 
 
 
