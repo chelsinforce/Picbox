@@ -1,10 +1,10 @@
-## 🛠️ **Documentation Utilisateur : Déploiement de l’environnement Picbox & Teleport**
+## 🛠️ **Documentation Utilisateur : Déploiement de l’environnement Picbox**
 
 
 ### **Pré-requis**
 
-* Système d’exploitation : Debian ou Ubuntu (version récente recommandée)
-* Mémoire RAM : 6 Go minimum
+* Serveur Debian (recommendé) /Ubuntu récent
+* Mémoire RAM : 16 Go minimum
 * Stockage : Espace disque suffisant pour :
   - L'application
   - Les sauvegardes
@@ -16,7 +16,63 @@
 
 ### **Étapes du déploiement**
 
-#### 1. 🌩️ **Créer un tunnel Cloudflare (Zero Trust)**
+#### 1. **Lancer le script de déploiement**
+
+Créer un fichier pour la PICBOX (pas besoin si vous clonnez le code, le fichier viens avec) a la racine.
+
+```bash
+cd /
+mkdir PICBOX
+cd PICBOX
+```
+
+Téléchargez ou copiez le script complet et exécutez-le :
+
+- Pour le copier depuis le presse papier : 
+
+```bash
+nano deploy.sh
+
+#Ctrl + shift + v ou click droit si connecté en ssh
+
+# Ctrl + x et y puis Entrée
+```
+
+- Pour le copier depuis un repo : 
+
+```bash
+apt update
+apt install git
+
+git clone (le liens du repo)
+```
+Donner les droits nécéssaire et exécuté le script
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+Le script va :
+
+* Installer Docker si besoin
+* Vous demander les informations nécessaires
+* Générer les certificats (Autosigné (testé et approuver) ou Let’s Encrypt(a tester)) 
+* Configurer Teleport, Portainer, Zabbix Proxy, Nginx, Grafana, PostgreSQL, etc.
+* Lancer tous les conteneurs via `docker compose`
+
+**Renseigné bien toutes les informations**
+
+* Nom du dossier de projet
+* Domaine public (`teleport.mondomaine.com`)
+* Type de certificat (Let’s Encrypt ou autosigné)
+* Email pour Certbot (si Let's Encrypt)
+* Données Zabbix Proxy (hostname, IP du serveur Zabbix et un identifiant spk)
+* Mot de passe PostgreSQL (par défaut : `dojo123` **A CHANGER**)
+* Fréquence des scans CVE
+* Suppression de l’ancienne installation (optionnel)
+
+#### 2. **Création du tunel cloudflare**
 
 Dans le tableau de bord Cloudflare Zero Trust :
 
@@ -37,7 +93,6 @@ docker run -d \
   cloudflare/cloudflared:latest \
   tunnel --no-autoupdate run --token <votre_token_cloudflare>
 ```
-
 > Remplacez `<votre_token_cloudflare>` par votre token réel.
 > Remplacez `<domaine_utilisé_pour_projet>` par votre domaine réel. (ex:teleportpicinformatiquecom)
 
@@ -174,8 +229,6 @@ Afin d'enroller un nouveau serveur, **ne cliquez pas sur enroller un serveur**
     ```
     teleport start --roles=node --token=(token) --auth-server=(ipserver):3025 --nodename=(nom explicatif)
     ```
-
-
 
 ### ✅ **Recommandation :**
 
