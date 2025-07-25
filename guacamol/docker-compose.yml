@@ -11,7 +11,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: some_root_password
       MYSQL_DATABASE: guacamole_db
-      MYSQL_USER: guacamole_user
+      MYSQL_USER: guacamole_user #A changer
       MYSQL_PASSWORD: some_password #A changer
     volumes:
       - guac-mysql:/var/lib/mysql
@@ -28,12 +28,12 @@ services:
       MYSQL_HOSTNAME: mysql
       MYSQL_PORT: 3306
       MYSQL_DATABASE: guacamole_db
-      MYSQL_USER: guacamole_user
-      MYSQL_PASSWORD: some_password
+      MYSQL_USER: guacamole_user #A changer
+      MYSQL_PASSWORD: some_password #A changer
       GUACAMOLE_HOME: /guac-home
       TOTP_ENABLED: "true" #MFA
     ports:
-      - "8080:8080" #Ajoutez 127.0.0.1: devant si tunel cloudflare
+      - "8080:8080" #Ajoutez 127.0.0.1: devant si tunel cloudflare / reverse proxy
     volumes:
       - guac-home:/guac-home
 
