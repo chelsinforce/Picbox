@@ -62,10 +62,6 @@ read -p "Hostname Zabbix (proxy) : " ZABBIX_HOSTNAME
 read -p "IP Zabbix (proxy) : " ZABBIX_IP
 read -p "Identité PSK (proxy) : " PSK_IDENTITY
 
-echo -e "\n🖥️ Serveur NGINX"
-read -p "IP de cloudflared (docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cloudflared): " CLOUDFLARE_IP
-
-
 echo -e "\n📡 Lancer un scan initial maintenant ?"
 echo "1) Oui"
 echo "2) Non"
