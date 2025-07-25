@@ -10,7 +10,7 @@
   - les journaux système et applicatifs
 * Accès `root` ou `sudo`
 * Docker pas nécessairement préinstallé (le script l’installe si absent)
-* Un domaine public pointant vers le serveur (ex : `teleport.example.com`)
+* Un domaine public pointant vers le serveur
 * Un token Cloudflare Tunnel Zero Trust
 
 ### **Étapes du déploiement**
@@ -25,17 +25,7 @@ mkdir PICBOX
 cd PICBOX
 ```
 
-Téléchargez ou copiez le script complet et exécutez-le :
-
-- Pour le copier depuis le presse-papiers : 
-
-```bash
-nano deploy.sh
-
-# Ctrl + Shift + V ou clic droit si connecté en SSH
-
-# Ctrl + X puis Y, puis Entrée
-```
+Téléchargez ou exécutez-le :
 
 - Pour le copier depuis un dépôt : 
 
@@ -62,9 +52,9 @@ Le script va :
 
 **Renseignez bien toutes les informations**
 
-* Nom du dossier de projet
-* Domaine public (`teleport.mondomaine.com`)
-* Type de certificat (Let’s Encrypt ou autosigné)
+* Nom du dossier de projet (`domaine utilisé`)
+* Domaine public (`domaine utilisé`)
+* Type de certificat (autosigné ou Let's Encrypt)
 * Email pour Certbot (si Let's Encrypt)
 * Données Zabbix Proxy (hostname, IP du serveur Zabbix et un identifiant spk)
 * Mot de passe PostgreSQL (par défaut : `dojo123` **À CHANGER**)
