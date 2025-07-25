@@ -1,4 +1,5 @@
 1 : Git clone
+
 2: 
 ```bash
 curl -O https://raw.githubusercontent.com/apache/guacamole-client/1.6.0/extensions/guacamole-auth-jdbc/modules/guacamole-auth-jdbc-mysql/schema/001-create-schema.sql
